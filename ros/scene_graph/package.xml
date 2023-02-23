@@ -1,0 +1,11 @@
+<?xml version="1.0" ?>
+<package format="2">
+  <name>scene_graph</name>
+  <version>0.0.0</version>
+  <description>The scene_graph package</description>
+  <maintainer email="ngilpin3@gatech.edu">Nicholas Gilpin</maintainer>
+  <maintainer email="acmiyaguchi@gatech.edu">Anthony Miyaguchi</maintainer>
+  <license>TODO</license>
+  <buildtool_depend>catkin</buildtool_depend>
+  <export />
+</package>
