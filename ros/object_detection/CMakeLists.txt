@@ -1,49 +1,31 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(object_detection)
 
-find_package(catkin REQUIRED)
+find_package(catkin
+    REQUIRED COMPONENTS
+    message_generation
+    std_msgs
+)
 catkin_python_setup()
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+add_message_files(
+    FILES
+    DetectedObjectList.msg
+)
 
-## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
-
-## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
-
-## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+    DEPENDENCIES
+    std_msgs
+)
 
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES object_detection
-#  CATKIN_DEPENDS other_catkin_pkg
-#  DEPENDS system_lib
+    CATKIN_DEPENDS
+    message_runtime
 )
 
-include_directories(
-# include
-# ${catkin_INCLUDE_DIRS}
-)
+include_directories(${catkin_INCLUDE_DIRS})
 
 if(CATKIN_ENABLE_TESTING)
-  find_package(rostest REQUIRED)
-  add_rostest(tests/test_object_detection.test)
+    find_package(rostest REQUIRED)
+    add_rostest(tests/test_object_detection.test)
 endif()

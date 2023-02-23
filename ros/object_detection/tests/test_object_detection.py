@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import rospy
 from cv_bridge import CvBridge
+from object_detection.msg import DetectedObjectList
 from sensor_msgs.msg import Image
 
 
@@ -37,3 +38,21 @@ def test_recieve_image_mock(node, bridge):
     red, green, blue = img.reshape(-1, 3).sum(axis=0)
     assert red > green and red > blue, "image is not red"
     assert green == 0 and blue == 0, "image is not red"
+
+
+def test_msg_detected_object_list():
+    msg = DetectedObjectList()
+    assert msg.data == "", "data is not an empty list"
+
+
+def test_msg_detected_object_list_publish(node):
+    data = "test"
+    msg = DetectedObjectList(data=data)
+    pub = rospy.Publisher(
+        "/test/detected_objects", DetectedObjectList, queue_size=1, latch=True
+    )
+    pub.publish(msg)
+
+    msg = rospy.wait_for_message("/test/detected_objects", DetectedObjectList)
+    # we get back a list of characters
+    assert msg.data == data
