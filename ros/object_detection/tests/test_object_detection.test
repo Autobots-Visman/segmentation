@@ -1,0 +1,10 @@
+<launch>
+  <param name="test_module" value="$(find object_detection)/tests" />
+  <test
+    test-name="test_detect"
+    pkg="ros_pytest"
+    type="ros_pytest_runner"
+    args="-k test_object_detection -vvv -s"
+    time-limit="60.0"
+  />
+</launch>
