@@ -35,6 +35,13 @@ cd src/segmentation/object_detection
 catkin test --this
 ```
 
+You can also run the tests via docker:
+
+```bash
+docker compose build
+docker compose run --rm app catkin test
+```
+
 ## Usage
 
 Todo

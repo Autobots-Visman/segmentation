@@ -1,0 +1,14 @@
+# Launch an arbitrary command from a workspace inside a container
+version: "3.8"
+
+services:
+  # base container -- will simply exit once brought up
+  # we can run commands via this container for running experiments, etc.
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    network_mode: host
+    volumes:
+      - ./:/app/src/segmentation/
+      - ./docker/bin:/app/bin/
