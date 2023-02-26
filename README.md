@@ -1,12 +1,15 @@
 # segmentation
+
 A ROS package that converts images into a semantic scene graph for other systems.
 
 ## Goals
+
 The final deliverable should be a reusable modular ROS package that takes video feed as input and outputs labeled segmented scene semantics.
-    
-The goal for this repository is not a robot using this package. Integration will occur in another repository. 
+
+The goal for this repository is not a robot using this package. Integration will occur in another repository.
 
 ## Timeline
+
 Part 1: Convert video into a semantic scene
 
     1. Install YOLO, OpenCV, and ROS Noetic
@@ -16,13 +19,29 @@ Part 1: Convert video into a semantic scene
     5. Implement data structure to store data compatible with ROS messages
 
 Part 2: Enhance model to generate scene graphs
-    
+
     1. Read about Relational Scene Graphs by Jenkins
     2. Implement scene graphs
     3. Integrate with previous ROS system
 
 ## Setup
-Todo
+
+Add the project to a catkin workspace.
+
+```bash
+rosdep install --from-paths src --ignore-src -r -y
+catkin build
+cd src/segmentation/object_detection
+catkin test --this
+```
+
+You can also run the tests via docker:
+
+```bash
+docker compose build
+docker compose run --rm app catkin test
+```
 
 ## Usage
+
 Todo
