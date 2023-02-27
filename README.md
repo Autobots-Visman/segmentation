@@ -12,9 +12,9 @@ The goal for this repository is not a robot using this package. Integration will
 
 Part 1: Convert video into a semantic scene
 
-    1. Install YOLO, OpenCV, and ROS Noetic
+    1. [X] Install YOLO, OpenCV, and ROS Noetic
     2. Implement YOLO on a test image
-    3. Modify YOLO to work with a live camera feed
+    3. Modify YOLO to work with a live camera feed (Webcam into ROS)
     4. Implement deduplication of objects between frames
     5. Implement data structure to store data compatible with ROS messages
 
