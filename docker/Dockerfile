@@ -1,5 +1,6 @@
 FROM ros:noetic-ros-base-focal
 
+# Install build tools ======================================================
 RUN apt-get update && \
     apt-get install -y \
         apt-utils \
@@ -9,6 +10,7 @@ RUN apt-get update && \
         python-is-python3 \
         python3-catkin-tools
 
+# Install ROS ================================================================
 # Use the following command in a running container to find dependencies that we
 # can install ahead of time. We do this to make reinstalling dependencies faster
 #
@@ -24,6 +26,11 @@ RUN apt-get install -y \
 WORKDIR /app
 RUN mkdir src
 RUN /ros_entrypoint.sh catkin build
+
+# Install Computer Vision =====================================================
+RUN git clone https://github.com/ultralytics/ultralytics.git
+RUN cd ultralytics/ && pip install -r requirements.txt
+RUN pip install ultralytics
 
 # copy in our own entrypoint
 ADD docker/bin ./bin
