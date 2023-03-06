@@ -44,4 +44,7 @@ docker compose run --rm app catkin test
 
 ## Usage
 
-Todo
+Run a container based on image and attach a shell
+```bash
+docker run -it segmentation-app /bin/bash
+```
