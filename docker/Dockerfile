@@ -30,7 +30,10 @@ RUN /ros_entrypoint.sh catkin build
 # Install Computer Vision =====================================================
 RUN git clone https://github.com/ultralytics/ultralytics.git
 RUN cd ultralytics/ && pip install -r requirements.txt
-RUN pip install ultralytics
+RUN pip install ultralytics opencv-python
+
+# Download and cache yolo model
+RUN yolo detect predict model=yolov8n-seg.pt source="https://ultralytics.com/images/bus.jpg" 
 
 # copy in our own entrypoint
 ADD docker/bin ./bin
