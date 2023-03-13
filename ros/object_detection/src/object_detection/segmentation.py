@@ -5,7 +5,6 @@
 # Run:
 #     docker compose run app python3 src/segmentation/ros/object_detection/src/object_detection/segmentation.py
 
-from time import sleep
 from ultralytics import YOLO
 import cv2
 
@@ -31,8 +30,8 @@ def label(image):
     # Display results
     if debug:
         res_plotted = results[0].plot()
-        cv2.imshow("result", res_plotted)
-        sleep(3)
+        cv2.imshow("result.png", res_plotted)
+        cv2.waitKey(delay=1)
 
     return results
 
@@ -44,15 +43,12 @@ def get_frame(vid_stream):
         print("Error: Could not capture video.")
   
     if captured:
-        if debug:
-            cv2.imshow('frame', frame)
-            sleep(3)
         return frame
     return None
 
 try:
     count = 0
-    while count < 5:
+    while count < 200:
         frame   = get_frame(vid_stream)
         labels  = label(frame)
 
