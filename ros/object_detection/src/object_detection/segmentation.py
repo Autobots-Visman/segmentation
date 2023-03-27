@@ -16,8 +16,14 @@ debug = True
 # https://docs.ultralytics.com/tasks/segment/
 # YOLOv8 segmentation models use the -seg suffix , i.e. yolov8n-seg.pt and are pretrained on COCO.
 model = YOLO('yolov8n-seg.pt')
-# 0 = open default camera
-vid_stream = cv2.VideoCapture(0)    
+
+# Use CAMERA_ID if it's open. Otherwise find another camera.
+CAMERA_ID = 2
+for i in range(5):
+    vid_stream = cv2.VideoCapture(CAMERA_ID)
+    if vid_stream.isOpened():
+        break
+    CAMERA_ID = i
 
 # Data for tests
 # bus.jpg is a picture of two men crossing a small street with a blue bus behind them in europe.
@@ -41,18 +47,17 @@ def get_frame(vid_stream):
 
     if not vid_stream.isOpened():
         print("Error: Could not capture video.")
+        exit(1)
   
     if captured:
         return frame
     return None
 
 try:
-    count = 0
-    while count < 200:
+    while True:
         frame   = get_frame(vid_stream)
         labels  = label(frame)
 
-        count   += 1
 finally:
     # After the loop release the cap object
     vid_stream.release()
