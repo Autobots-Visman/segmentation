@@ -25,6 +25,14 @@ for i in range(5):
         break
     CAMERA_ID = i
 
+# Tracker
+# Kalman filters were chosen as the tracker for these reasons:
+#     1. They can handle occlusion
+#     2. Most trackers function by searching for similar image patches. That's not
+#         needed here because YOLO already does that.
+#     3. Kalman filters compensate for camera motion (can be estimated by opencv)
+
+
 # Data for tests
 # bus.jpg is a picture of two men crossing a small street with a blue bus behind them in europe.
 image = "https://ultralytics.com/images/bus.jpg"
