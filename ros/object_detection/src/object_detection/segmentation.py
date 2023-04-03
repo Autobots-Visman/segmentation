@@ -127,18 +127,23 @@ try:
         # Use the estimated locations of all visible objects
         for object_class in trackers.keys():
             for id in trackers[object_class].keys():
+                # Get the average 2D location and 2D variance
                 kalman_filter = trackers[object_class][id]
-                location = np.round(np.array(kalman_filter.statePost[:2].reshape(-1)))
+                row, col = np.round(np.array(kalman_filter.statePost[:2].reshape(-1)))
+                covariance = kalman_filter.errorCovPost[:2,:2]
 
                 # Display results
-                print("There's a", id, "\t\t\t\t\t\tat:", (location))
-                cv2.drawMarker(frame, (int(location[0]), int(location[1])), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                print("There's a", id, "\t\t\t\t\t\tat:", (row, col))
+                cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                bottomLeftCornerOfText = (int(location[0])+20,int(location[1])+20)
+                bottomLeftCornerOfText = (int(row)+20,int(col)+20)
                 fontScale = 1
                 fontColor = (255,255,255)
                 lineType = 2
                 cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+
+                # Draw a circle around where the object is predicted to exist
+                cv2.circle(frame,(int(row),int(col)),int(np.sqrt(covariance[0][0]**2+covariance[1][1]**2)),(255,255,255),thickness=1,lineType=8)
 
                 cv2.imshow("result.png", frame)
                 cv2.waitKey(delay=1)
