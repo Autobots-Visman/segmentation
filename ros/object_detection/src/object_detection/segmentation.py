@@ -39,13 +39,16 @@ def get_frame(vid_stream):
         return frame
     return None
 
-def track():
+def track(center_x, center_y):
     """Create a new kalman filter tracker for tracking one object. """
     # Assume the state and measurement paramters have a dimension of 2. There isn't a control vector. 
     tracker = cv2.KalmanFilter(4, 2)
     tracker.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
     tracker.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
     tracker.processNoiseCov = np.array([[1e-3, 0, 0, 0], [0, 1e-3, 0, 0], [0, 0, 5e-3, 0], [0, 0, 0, 5e-3]], np.float32)
+    tracker.statePre = np.array(
+        [[center_x], [center_y], [0], [0]], np.float32
+    )
     return tracker
 
 def update_tracker(tracker, center_x, center_y):
@@ -84,18 +87,12 @@ def assign_trackers(trackers, boxes):
             # Use the hungarian algorithm to assign each bounding box center measurement to an existing kalman filter
             row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
-            # Convert the output to a list of tuples called assignments with the format (tracker_id, (center_x, center_y))
-            assignments = []
+            # Update the trackers for this class
             for i in range(len(row_ind)):
                 tracker_id = list(trackers[object_class].keys())[row_ind[i]]
                 center = known_centers[col_ind[i]]
-                assignments.append((tracker_id, center))
                 all_assignments.add(tracker_id)
-
-            # Update the trackers with the current center coordinate measurements
-            for tracker_id, center in assignments:
-                current_kf = trackers[object_class][tracker_id]
-                update_tracker(current_kf, center[0], center[1])
+                update_tracker(trackers[object_class][tracker_id], center[0], center[1])
 
     # If any tracker ids in trackers are unused, then update their kalman filter to lower the probability of their last known location. 
     for object_class in trackers.keys():
@@ -124,9 +121,8 @@ try:
                 trackers[object_class] = {}
             count = len(trackers[object_class])
             id = object_class + str(count + 1)
-            trackers[object_class][id] = track()
             center_x, center_y = get_center(boxes.xyxy[unused])
-            update_tracker(trackers[object_class][id], center_x, center_y)
+            trackers[object_class][id] = track(center_x, center_y)
 
         # Use the estimated locations of all visible objects
         for object_class in trackers.keys():
@@ -135,10 +131,15 @@ try:
                 location = np.round(np.array(kalman_filter.statePost[:2].reshape(-1)))
 
                 # Display results
-                print("Object:", id, "\tat:", (location))
-                cv2.rectangle(frame, (int(boxes.xyxy[i][0]), int(boxes.xyxy[i][1])), (int(boxes.xyxy[i][2]), int(boxes.xyxy[i][3])), (0, 255, 0), 2)
-                cv2.putText(frame, id, (int(boxes.xyxy[i][0]), int(boxes.xyxy[i][1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                print("There's a", id, "\t\t\t\t\t\tat:", (location))
                 cv2.drawMarker(frame, (int(location[0]), int(location[1])), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                bottomLeftCornerOfText = (int(location[0])+20,int(location[1])+20)
+                fontScale = 1
+                fontColor = (255,255,255)
+                lineType = 2
+                cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+
                 cv2.imshow("result.png", frame)
                 cv2.waitKey(delay=1)
 
