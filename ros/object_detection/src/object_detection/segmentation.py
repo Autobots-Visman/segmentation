@@ -166,24 +166,27 @@ try:
                 
                     # Remove id from trackers if count is over 60
                     # Forgettng items in 2 seconds depends on your computer's processing speed
-                    threshold = 20
+                    threshold = 100
                     if age[object_class][id] > threshold:
                         print("Forgetting about", id, " ------------------------------------------")
                         forgetables.append((object_class, id))
 
-                # Display results
+                # Use/Display results with high confidence
                 confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
                 print("I'm", confidence, "%\t sure that there's a", id, "\t\t\tat:", (row, col))
-                cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                bottomLeftCornerOfText = (int(row)+20,int(col)+20)
-                fontScale = 1
-                fontColor = (255,255,255)
-                lineType = 2
-                cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+                
+                # WARNING: The model sometimes hallucenates with 100% confidence for a single frame, so we wait until more data is gathered
+                if uncertainty < 0.95 and uncertainty > 0.05:
+                    cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    bottomLeftCornerOfText = (int(row)+20,int(col)+20)
+                    fontScale = 1
+                    fontColor = (255,255,255)
+                    lineType = 2
+                    cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 
-                # Draw a circle around the area where the object is predicted to exist
-                cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
+                    # Draw a circle around the area where the object is predicted to exist
+                    cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
 
         cv2.imshow("result.png", frame)
         cv2.waitKey(delay=1)
