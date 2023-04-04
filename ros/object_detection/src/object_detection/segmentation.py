@@ -43,9 +43,13 @@ def track(center_x, center_y):
     """Create a new kalman filter tracker for tracking one object. """
     # Assume the state and measurement paramters have a dimension of 2. There isn't a control vector. 
     tracker = cv2.KalmanFilter(4, 2)
+    # Which dimensions should be measured?
     tracker.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
+    # What dimensions need to be multiplied together to represent change?
     tracker.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-    tracker.processNoiseCov = np.array([[1e-3, 0, 0, 0], [0, 1e-3, 0, 0], [0, 0, 5e-3, 0], [0, 0, 0, 5e-3]], np.float32)
+    # How much should each measurement be trusted (bigger = more trust)?
+    tracker.processNoiseCov = np.array([[5e-3, 0, 0, 0], [0, 5e-3, 0, 0], [0, 0, 5e-3, 0], [0, 0, 0, 5e-3]], np.float32)
+    # What is the current state?
     tracker.statePre = np.array(
         [[center_x], [center_y], [0], [0]], np.float32
     )
@@ -97,15 +101,22 @@ def assign_trackers(trackers, boxes):
     # If any tracker ids in trackers are unused, then update their kalman filter to lower the probability of their last known location. 
     for object_class in trackers.keys():
         for id in list(trackers[object_class].keys()):
+            current_kf = trackers[object_class][id]
             if id not in all_assignments:
-                current_kf = trackers[object_class][id]
                 current_kf.errorCovPost *= 1.1
+            
+            # Never be 100% certain
+            current_kf.errorCovPost += 0.1
 
     return unused_boxes
 
 try:
     # Example: {"person": {"person1": kalman_filter, "person2": kalman_filter}, "chair": {"chair1": kalman_filter} }
     trackers = {}
+    # Example: {cup:{cup1:32}}
+    age = {}
+    # Example: [(cup, cup1)]
+    forgetables = []
     while True:
         frame   = get_frame(vid_stream)
         labels  = label(frame)
@@ -124,6 +135,17 @@ try:
             center_x, center_y = get_center(boxes.xyxy[unused])
             trackers[object_class][id] = track(center_x, center_y)
 
+        # Forget about items that haven't been seen in a few whiles
+        for i in range(len(forgetables)):
+            object_class, id = forgetables.pop()
+            if object_class in trackers and id in trackers[object_class]:
+                trackers[object_class].pop(id)
+            if object_class in age and id in age[object_class]:
+                age[object_class].pop(id)
+                if len(trackers[object_class]) == 0:
+                    trackers.pop(object_class)
+                    age.pop(object_class)
+
         # Use the estimated locations of all visible objects
         for object_class in trackers.keys():
             for id in trackers[object_class].keys():
@@ -131,9 +153,27 @@ try:
                 kalman_filter = trackers[object_class][id]
                 row, col = np.round(np.array(kalman_filter.statePost[:2].reshape(-1)))
                 covariance = kalman_filter.errorCovPost[:2,:2]
+                uncertainty = np.sqrt(covariance[0][0]**2+covariance[1][1]**2)
+
+                # Increment counter if location uncertainty is less than 5 standard deviations
+                if uncertainty > 0.95:
+                    if object_class not in age:
+                        age[object_class] = {}
+                    if id not in age[object_class]:
+                        age[object_class][id] = 1
+                    else:
+                        age[object_class][id] += 1
+                
+                    # Remove id from trackers if count is over 60
+                    # Forgettng items in 2 seconds depends on your computer's processing speed
+                    threshold = 20
+                    if age[object_class][id] > threshold:
+                        print("Forgetting about", id, " ------------------------------------------")
+                        forgetables.append((object_class, id))
 
                 # Display results
-                print("There's a", id, "\t\t\t\t\t\tat:", (row, col))
+                confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
+                print("I'm", confidence, "%\t sure that there's a", id, "\t\t\tat:", (row, col))
                 cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 bottomLeftCornerOfText = (int(row)+20,int(col)+20)
@@ -142,11 +182,11 @@ try:
                 lineType = 2
                 cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 
-                # Draw a circle around where the object is predicted to exist
-                cv2.circle(frame,(int(row),int(col)),int(np.sqrt(covariance[0][0]**2+covariance[1][1]**2)),(255,255,255),thickness=1,lineType=8)
+                # Draw a circle around the area where the object is predicted to exist
+                cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
 
-                cv2.imshow("result.png", frame)
-                cv2.waitKey(delay=1)
+        cv2.imshow("result.png", frame)
+        cv2.waitKey(delay=1)
 
 finally:
     # After the loop release the cap object
