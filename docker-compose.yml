@@ -12,3 +12,5 @@ services:
     volumes:
       - ./:/app/src/segmentation/
       - ./docker/bin:/app/bin/
+    devices:
+      - /dev/video0:/dev/video0

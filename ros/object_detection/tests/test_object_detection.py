@@ -4,6 +4,7 @@ import rospy
 from cv_bridge import CvBridge
 from object_detection.msg import DetectedObjectList
 from sensor_msgs.msg import Image
+import cv2
 
 
 @pytest.fixture()
@@ -14,7 +15,6 @@ def node():
 @pytest.fixture()
 def bridge():
     return CvBridge()
-
 
 def test_recieve_image_mock(node, bridge):
     """A simple test to show-case how to mock a message and check that it is received."""
@@ -56,3 +56,17 @@ def test_msg_detected_object_list_publish(node):
     msg = rospy.wait_for_message("/test/detected_objects", DetectedObjectList)
     # we get back a list of characters
     assert msg.data == data
+
+def test_webcam_access():
+    # Use CAMERA_ID if it's open. Otherwise find another camera.
+    try:
+        CAMERA_ID = 0
+        for i in range(5):
+            vid_stream = cv2.VideoCapture(CAMERA_ID)
+            if vid_stream.isOpened():
+                break
+            CAMERA_ID = i
+        assert vid_stream.isOpened(), "Error: No camera hardware is accessible. "
+    finally:
+        # After the loop release the cap object
+        vid_stream.release()
