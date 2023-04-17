@@ -10,10 +10,11 @@ import cv2
 model = YOLO('yolov8n-seg.pt')
 
 # Use CAMERA_ID if it's open. Otherwise find another camera.
-CAMERA_ID = 2
+CAMERA_ID = 1
 for i in range(5):
     vid_stream = cv2.VideoCapture(CAMERA_ID)
     if vid_stream.isOpened():
+        print("Camera:", CAMERA_ID)
         break
     CAMERA_ID = i
 

@@ -12,5 +12,11 @@ services:
     volumes:
       - ./:/app/src/segmentation/
       - ./docker/bin:/app/bin/
+      # Allow access to the display socket for sending graphics data
+      - /tmp/.X11-unix:/tmp/.X11-unix
     devices:
+      # Allow access to the default camera (Change integer to switch camera)
       - /dev/video0:/dev/video0
+    environment:
+      # Use the same display as the host (Change integer to switch display)
+      - DISPLAY=${DISPLAY}
