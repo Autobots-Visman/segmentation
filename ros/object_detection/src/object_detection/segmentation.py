@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Description:
 #     A script that performs semantic segmentation
 
@@ -5,6 +6,8 @@ from ultralytics import YOLO
 from scipy.optimize import linear_sum_assignment
 import numpy as np
 import cv2
+import rospy
+from std_msgs.msg import String
 
 # YOLOv8 segmentation models use the -seg suffix , i.e. yolov8n-seg.pt and are pretrained on COCO.
 model = YOLO('yolov8n-seg.pt')
@@ -112,13 +115,18 @@ def assign_trackers(trackers, boxes):
     return unused_boxes
 
 try:
+    # Register with ROS
+    pub = rospy.Publisher('chatter', String, queue_size=10)
+    rospy.init_node('object_detection')
+    rate = rospy.Rate(30)
+
     # Example: {"person": {"person1": kalman_filter, "person2": kalman_filter}, "chair": {"chair1": kalman_filter} }
     trackers = {}
     # Example: {cup:{cup1:32}}
     age = {}
     # Example: [(cup, cup1)]
     forgetables = []
-    while True:
+    while not rospy.is_shutdown():
         frame   = get_frame(vid_stream)
         labels  = label(frame)
         boxes = labels.boxes
@@ -174,23 +182,27 @@ try:
 
                 # Use/Display results with high confidence
                 confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
-                print("I'm", confidence, "%\t sure that there's a", id, "\t\t\tat:", (row, col))
                 
                 # WARNING: The model sometimes hallucenates with 100% confidence for a single frame, so we wait until more data is gathered
                 if uncertainty < 0.95 and uncertainty > 0.05:
-                    cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    bottomLeftCornerOfText = (int(row)+20,int(col)+20)
-                    fontScale = 1
-                    fontColor = (255,255,255)
-                    lineType = 2
-                    cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+                    msg = str(id) + str(confidence) +  "\t\t\tat:" + str((row, col))
+
+
+                    # Display Code for Debugging
+                    # cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                    # font = cv2.FONT_HERSHEY_SIMPLEX
+                    # bottomLeftCornerOfText = (int(row)+20,int(col)+20)
+                    # fontScale = 1
+                    # fontColor = (255,255,255)
+                    # lineType = 2
+                    # cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 
                     # Draw a circle around the area where the object is predicted to exist
-                    cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
+                    # cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
 
-        cv2.imshow("result.png", frame)
-        cv2.waitKey(delay=1)
+        # Display Code for Debugging
+        # cv2.imshow("result.png", frame)
+        # cv2.waitKey(delay=1)
 
 finally:
     # After the loop release the cap object
