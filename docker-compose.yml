@@ -1,10 +1,10 @@
-# Launch an arbitrary command from a workspace inside a container
 version: "3.8"
 
 services:
-  # base container -- will simply exit once brought up
-  # we can run commands via this container for running experiments, etc.
-  app:
+  # The leftmost are the services provided by this composition of docker containers
+  tracking:
+    # The service app runs the COMMAND by default if no other command is given
+    command: rosrun object_detection segmentation.py
     build:
       context: .
       dockerfile: docker/Dockerfile
