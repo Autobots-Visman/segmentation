@@ -10,7 +10,7 @@ import cv2
 model = YOLO('yolov8n-seg.pt')
 
 # Use CAMERA_ID if it's open. Otherwise find another camera.
-CAMERA_ID = 2
+CAMERA_ID = 0
 for i in range(5):
     vid_stream = cv2.VideoCapture(CAMERA_ID)
     if vid_stream.isOpened():
@@ -20,12 +20,6 @@ for i in range(5):
 # Data for tests
 # bus.jpg is a picture of two men crossing a small street with a blue bus behind them in europe.
 image = "https://ultralytics.com/images/bus.jpg"
-
-def label(image):
-    """Use a computer vision model to semantically label an image. """
-    results = model(image)  # predict on an image
-
-    return results[0]
 
 def get_frame(vid_stream):
     """Get the next image frame from a video stream. """
@@ -67,10 +61,12 @@ def get_center(xyxy):
     bbox_center_y = (xyxy[3] + xyxy[1]) / 2
     return bbox_center_x, bbox_center_y
 
-def assign_trackers(trackers, boxes):
+def assign_trackers(trackers, labels):
     """Assign all detected bounding box centers to existing trackers with the least amount of error. """
 
     # Calculate the center of all boxes of a known class
+    boxes = labels.boxes
+    classification_confidences = boxes.conf
     unused_boxes = set(range(len(boxes)))
     all_assignments = set()
     for object_class in trackers.keys():
@@ -119,11 +115,12 @@ try:
     forgetables = []
     while True:
         frame   = get_frame(vid_stream)
-        labels  = label(frame)
+        result = model(frame)
+        labels  = result[0]
         boxes = labels.boxes
 
         # Use a Kalman Filter to predict the location of each object
-        unused_boxes = assign_trackers(trackers, boxes)
+        unused_boxes = assign_trackers(trackers, labels)
 
         # Create trackers for each boxes index in unused_boxes
         for unused in list(unused_boxes):
@@ -175,20 +172,22 @@ try:
                 confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
                 print("I'm", confidence, "%\t sure that there's a", id, "\t\t\tat:", (row, col))
                 
+                # Toggle to add bounding boxes to current video frame image
+                frame = result[0].plot()
                 # WARNING: The model sometimes hallucenates with 100% confidence for a single frame, so we wait until more data is gathered
-                if uncertainty < 0.95 and uncertainty > 0.05:
-                    cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    bottomLeftCornerOfText = (int(row)+20,int(col)+20)
-                    fontScale = 1
-                    fontColor = (255,255,255)
-                    lineType = 2
-                    cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+                # cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                # font = cv2.FONT_HERSHEY_SIMPLEX
+                # bottomLeftCornerOfText = (int(row)+20,int(col)+20)
+                # fontScale = 1
+                # fontColor = (255,255,255)
+                # lineType = 2
+                # cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
 
-                    # Draw a circle around the area where the object is predicted to exist
-                    cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
+                # Draw a circle around the area where the object is predicted to exist
+                # cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
 
-        cv2.imshow("result.png", frame)
+        # Display the results
+        cv2.imshow("Multi-Object Tracker", frame)
         cv2.waitKey(delay=1)
 
 finally:
