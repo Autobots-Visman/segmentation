@@ -28,8 +28,7 @@ RUN mkdir src
 RUN /ros_entrypoint.sh catkin build
 
 # Install Computer Vision =====================================================
-RUN git clone https://github.com/ultralytics/ultralytics.git
-RUN cd ultralytics/ && pip install -r requirements.txt
+RUN pip install numpy
 RUN pip install ultralytics opencv-python
 
 # Download and cache yolo model
