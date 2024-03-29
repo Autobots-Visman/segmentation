@@ -10,16 +10,22 @@ import cv2
 model = YOLO('yolov8n-seg.pt')
 
 # Use CAMERA_ID if it's open. Otherwise find another camera.
-CAMERA_ID = 2
-for i in range(5):
+# Handy: CAMERA_ID 4 is RGB, CAMERA_ID 2 is BW with dots.
+CAMERA_ID = 4
+vid_stream = cv2.VideoCapture(CAMERA_ID)
+if not vid_stream.isOpened():
+    raise ValueError("CAMERA_ID: ", CAMERA_ID, " is not valid.")
+
+
+'''for i in range(5):
     vid_stream = cv2.VideoCapture(CAMERA_ID)
     if vid_stream.isOpened():
         break
-    CAMERA_ID = i
+    CAMERA_ID = i'''
 
 # Data for tests
 # bus.jpg is a picture of two men crossing a small street with a blue bus behind them in europe.
-image = "https://ultralytics.com/images/bus.jpg"
+# image = "https://ultralytics.com/images/bus.jpg"
 
 def label(image):
     """Use a computer vision model to semantically label an image. """
@@ -121,13 +127,12 @@ try:
         frame   = get_frame(vid_stream)
         labels  = label(frame)
         boxes = labels.boxes
-
         # Use a Kalman Filter to predict the location of each object
         unused_boxes = assign_trackers(trackers, boxes)
 
         # Create trackers for each boxes index in unused_boxes
         for unused in list(unused_boxes):
-            object_class = model.names[int(boxes[unused].cls)]
+            object_class = model.names[int(boxes.cls[unused])]
             if not object_class in trackers:
                 trackers[object_class] = {}
             count = len(trackers[object_class])
@@ -136,11 +141,11 @@ try:
             trackers[object_class][id] = track(center_x, center_y)
 
         # Forget about items that haven't been seen in a few whiles
+        # QUESTION: why are we not factoring in the actual age value to this? 
         for i in range(len(forgetables)):
             object_class, id = forgetables.pop()
             if object_class in trackers and id in trackers[object_class]:
                 trackers[object_class].pop(id)
-            if object_class in age and id in age[object_class]:
                 age[object_class].pop(id)
                 if len(trackers[object_class]) == 0:
                     trackers.pop(object_class)
@@ -148,14 +153,17 @@ try:
 
         # Use the estimated locations of all visible objects
         for object_class in trackers.keys():
+            print(object_class)
             for id in trackers[object_class].keys():
+                print(id)
                 # Get the average 2D location and 2D variance
                 kalman_filter = trackers[object_class][id]
+                print(kalman_filter.statePost)
                 row, col = np.round(np.array(kalman_filter.statePost[:2].reshape(-1)))
                 covariance = kalman_filter.errorCovPost[:2,:2]
                 uncertainty = np.sqrt(covariance[0][0]**2+covariance[1][1]**2)
 
-                # Increment counter if location uncertainty is less than 5 standard deviations
+                # Increment counter if location uncertainty is greater than 5 standard deviations
                 if uncertainty > 0.95:
                     if object_class not in age:
                         age[object_class] = {}
@@ -165,18 +173,18 @@ try:
                         age[object_class][id] += 1
                 
                     # Remove id from trackers if count is over 60
-                    # Forgettng items in 2 seconds depends on your computer's processing speed
-                    threshold = 100
+                    # Forgetting items in 2 seconds depends on your computer's processing speed
+                    threshold = 60
                     if age[object_class][id] > threshold:
                         print("Forgetting about", id, " ------------------------------------------")
                         forgetables.append((object_class, id))
 
-                # Use/Display results with high confidence
+                # Display results with high confidence
                 confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
-                print("I'm", confidence, "%\t sure that there's a", id, "\t\t\tat:", (row, col))
                 
                 # WARNING: The model sometimes hallucenates with 100% confidence for a single frame, so we wait until more data is gathered
                 if uncertainty < 0.95 and uncertainty > 0.05:
+                    print("I'm", confidence, "%\t sure that there's a", id, " at:", (row, col))
                     cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
                     font = cv2.FONT_HERSHEY_SIMPLEX
                     bottomLeftCornerOfText = (int(row)+20,int(col)+20)
@@ -187,6 +195,7 @@ try:
 
                     # Draw a circle around the area where the object is predicted to exist
                     cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
+                    # cv2.rectangle(frame,(int(row),int(col)),(int(20*max(uncertainty, 0) + row), int(20*max(uncertainty, 0) + col)),(255,255,255),thickness=1,lineType=8)
 
         cv2.imshow("result.png", frame)
         cv2.waitKey(delay=1)
