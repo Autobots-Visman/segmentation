@@ -3,6 +3,7 @@
 
 from ultralytics import YOLO
 from scipy.optimize import linear_sum_assignment
+from assignment import Assignment
 import numpy as np
 import cv2
 
@@ -65,7 +66,7 @@ def update_tracker(tracker, center_x, center_y):
     """Update the tracker with a new measurement and return the estimated object location."""
     measurement = np.array([[np.float32(center_x)], [np.float32(center_y)]])
     tracker.correct(measurement)
-    prediction = tracker.predict()
+    return tracker.predict()
 
 def get_center(xyxy):
     """Convert a bounding box corner from the array boxes.xyxy to a center xy coordinate of the box. """
@@ -76,11 +77,11 @@ def get_center(xyxy):
 def assign_trackers(trackers, boxes):
     """Assign all detected bounding box centers to existing trackers with the least amount of error. """
 
-    # Calculate the center of all boxes of a known class
     unused_boxes = set(range(len(boxes)))
     all_assignments = set()
     for object_class in trackers.keys():
             known_centers = []
+            # Calculate the center of all boxes of a known class
             for i in range(len(boxes)):
                 if model.names[int(boxes[i].cls)] == object_class:
                     unused_boxes.discard(i)
@@ -117,12 +118,61 @@ def assign_trackers(trackers, boxes):
     return unused_boxes
 
 try:
+    # create assignment object, passing in all class names from model
+    assigner = Assignment(model.names)
+    while True:
+        # get current frame's bounding boxes
+        frame   = get_frame(vid_stream)
+        labels  = label(frame)
+        boxes = labels.boxes
+        # perform (re)assignment
+        assigner.assign(boxes)
+        estimators = assigner.estimators
+        # display
+        print("displaying")
+        for cls in estimators.keys():
+            print(cls)
+            for id in estimators[cls].keys():
+                print(id)
+                # Get the average 2D location and 2D variance
+                kf = estimators[cls][id]
+                print(kf.statePost)
+                row, col = np.round(np.array(kf.statePost[:2].reshape(-1)))
+                covariance = kf.errorCovPost[:2,:2]
+                uncertainty = np.sqrt(covariance[0][0]**2+covariance[1][1]**2)
+                # Display results with high confidence
+                confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
+                
+                # WARNING: The model sometimes hallucenates with 100% confidence for a single frame, so we wait until more data is gathered
+                if uncertainty < 0.95 and uncertainty > 0.05:
+                    print("I'm", confidence, "%\t sure that there's a", id, " at:", (row, col))
+                    cv2.drawMarker(frame, (int(row), int(col)), (0, 0, 255), cv2.MARKER_CROSS, 20)
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    bottomLeftCornerOfText = (int(row)+20,int(col)+20)
+                    fontScale = 1
+                    fontColor = (255,255,255)
+                    lineType = 2
+                    cv2.putText(frame,str(id), bottomLeftCornerOfText, font, fontScale,fontColor,lineType)
+
+                    # Draw a circle around the area where the object is predicted to exist
+                    cv2.circle(frame,(int(row),int(col)),int(20*max(uncertainty, 0)),(255,255,255),thickness=1,lineType=8)
+
+        cv2.imshow("result.png", frame)
+        cv2.waitKey(delay=1)
+
+finally:
+    # After the loop release the cap object
+    vid_stream.release()
+    # Destroy all the windows
+    cv2.destroyAllWindows()
+'''
+try:
     # Example: {"person": {"person1": kalman_filter, "person2": kalman_filter}, "chair": {"chair1": kalman_filter} }
     trackers = {}
     # Example: {cup:{cup1:32}}
     age = {}
     # Example: [(cup, cup1)]
-    forgetables = []
+    forgettables = []
     while True:
         frame   = get_frame(vid_stream)
         labels  = label(frame)
@@ -142,8 +192,9 @@ try:
 
         # Forget about items that haven't been seen in a few whiles
         # QUESTION: why are we not factoring in the actual age value to this? 
-        for i in range(len(forgetables)):
-            object_class, id = forgetables.pop()
+        # ANSWER: it is in next loop
+        for i in range(len(forgettables)):
+            object_class, id = forgettables.pop()
             if object_class in trackers and id in trackers[object_class]:
                 trackers[object_class].pop(id)
                 age[object_class].pop(id)
@@ -177,7 +228,7 @@ try:
                     threshold = 60
                     if age[object_class][id] > threshold:
                         print("Forgetting about", id, " ------------------------------------------")
-                        forgetables.append((object_class, id))
+                        forgettables.append((object_class, id))
 
                 # Display results with high confidence
                 confidence = round(100 - (min(max(uncertainty, 0), 1) * 100), 3)
@@ -199,9 +250,4 @@ try:
 
         cv2.imshow("result.png", frame)
         cv2.waitKey(delay=1)
-
-finally:
-    # After the loop release the cap object
-    vid_stream.release()
-    # Destroy all the windows
-    cv2.destroyAllWindows()
+'''

@@ -1,8 +1,11 @@
+'''
+ROS-specific test for object detection
+'''
 import numpy as np
 import pytest
 import rospy
 from cv_bridge import CvBridge
-from object_detection.msg import DetectedObjectList
+from msg import DetectedObjectList
 from sensor_msgs.msg import Image
 
 
